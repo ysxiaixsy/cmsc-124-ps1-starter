@@ -250,9 +250,20 @@ dt_status dt_array_set(dt_array *a, long long index, dt_value v)
          dt_array_set(a,  2, dt_value_int(10))  -> DT_ERR_RANGE, nothing changes
        cases/normal/array_basics.case, cases/boundary/array_negative_lower_bound.case */
     
-       
-    // (void)a;
-    // (void)index;
-    // (void)v;
-    return DT_ERR_RANGE;
+    // get the offset for the given index
+    size_t offset;
+
+    // check the bounds and get the offset
+    dt_status status = dt_array_bounds_check(a, index, &offset);
+
+    // if the bounds check fails, return the error status
+    if (status != DT_OK) {
+        return status;
+    }
+
+    // set the element at the offset to v
+    // inverse of what the getter does
+    a->elements[offset] = v; 
+
+    return DT_OK;
 }
