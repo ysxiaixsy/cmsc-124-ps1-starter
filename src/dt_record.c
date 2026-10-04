@@ -186,8 +186,17 @@ dt_status dt_record_set(dt_record *r, const char *field, dt_value v)
          dt_record_set(person, "salary", dt_value_int(1))   -> DT_ERR_FIELD
          the record still has only the fields "name" and "age"
        cases/normal/record_basics.case, cases/boundary/record_unknown_field.case */
-    (void)r;
-    (void)field;
-    (void)v;
+    
+    // same lookup as in dt_record_get
+    size_t i;
+    for (i = 0; i < r->count; i++) {
+        if (strcmp(r->names[i], field) == 0) {
+            // if found, replace the value with v
+            // just the inverse of what the getter does
+            r->values[i] = v;
+            return DT_OK;
+        }
+    }
+    // if not found, return DT_ERR_FIELD
     return DT_ERR_FIELD;
 }
