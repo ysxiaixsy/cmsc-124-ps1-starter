@@ -37,9 +37,44 @@ dt_str *dt_str_new(const char *bytes, size_t length)
        dt_str_new("hello", 5)  -> a string whose dt_str_len is 5
        dt_str_new("a\0b", 3)   -> a string whose dt_str_len remains 3
        cases/normal/string_building.case, cases/capacity/embedded_zero_byte.case */
-    (void)bytes;
-    (void)length;
-    return NULL;
+
+    // check if length is SIZE_MAX, if so return NULL
+    if (length == SIZE_MAX) {
+        return NULL;
+    }
+
+    // calculate buffer size
+    size_t buffer_size = length + 1; // +1 for the \0 terminator
+
+    // allocate the dt_str structure
+    dt_str *str = malloc(sizeof(*str));
+    
+    // if allocation fails, return NULL
+    if (str == NULL) {
+        return NULL; 
+    }
+
+    // allocate the byte buffer for str, including \0
+    str->bytes = malloc(buffer_size);
+
+    // if allocation fails, 
+    if (str->bytes == NULL) {
+        // free the previously allocated dt_str and return NULL
+        free(str);
+        return NULL;
+    }
+
+    // copy length bytes from bytes into str->bytes
+    memcpy(str->bytes, bytes, length);
+
+    // put the null terminator at the end of the copied bytes
+    str->bytes[length] = '\0';
+
+    // set the length and capacity
+    str->length = length;
+    str->capacity = buffer_size;
+
+    return str;
 }
 
 /*
