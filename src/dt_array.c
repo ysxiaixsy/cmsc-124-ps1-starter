@@ -43,9 +43,69 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
        dt_array_new(0, 0)   -> an empty array
        cases/normal/array_basics.case, cases/boundary/array_empty.case,
        cases/boundary/array_negative_lower_bound.case */
-    (void)length;
-    (void)lower_bound;
-    return NULL;
+
+    if (length > 0) {
+        
+        // example: idx: -1, 0, 1    offset: 0, 1, 2
+        // final index = lower_bound + last_offset
+        // make sure last_offset can be represented as long long
+        size_t last_offset = length - 1;
+
+        // check if last_offset can represent a long long
+        if (last_offset > (size_t)LLONG_MAX) {
+            return NULL; // final index is unrepresentable
+        }
+
+        // check if lower_bound + last_offset > LLONG_MAX
+        // => lower_bound > LLONG_MAX - last_offset
+        if (lower_bound > LLONG_MAX - (long long)(last_offset)) {
+            return NULL; // final index is unrepresentable
+        }
+    }
+
+    // total_bytes = length * sizeof(dt_value)
+    // SIZE_MAX is the largest value that size_t can represent.
+    // To prevent multiplication overflow: 
+    //      total_bytes <= SIZE_MAX
+    //      length * sizeof(dt_value) <= SIZE_MAX
+    //      Hence, length <= SIZE_MAX / sizeof(dt_value)
+    if (length > SIZE_MAX / sizeof(dt_value)) {
+        return NULL;
+    }
+
+    // allocate the array descriptor
+    dt_array *a = malloc(sizeof(*a));
+
+    // if allocation fails, return NULL
+    if (a == NULL) {
+        return NULL;
+    }
+
+    // allocate and initialize the elements if the array is non-empty
+    if (length > 0) {
+        // allocate the elements
+        a->elements = malloc(length * sizeof(dt_value));
+
+        // if allocation fails, free the descriptor and return NULL
+        if (a->elements == NULL) {
+            free(a);
+            return NULL;
+        }
+
+        // initialize each element to dt_value_nil()
+        for (size_t i = 0; i < length; i++) {
+            a->elements[i] = dt_value_nil();
+        }
+    }  else {
+        // for an empty array, set elements to NULL
+        a->elements = NULL;
+    }
+
+    // store the length and lower bound
+    a->length = length;
+    a->lower_bound = lower_bound;
+
+    return a;
 }
 
 /*
