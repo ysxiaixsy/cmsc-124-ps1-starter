@@ -26,6 +26,35 @@ struct dt_array {
     long long lower_bound;
 };
 
+// helper function for both getters and setters
+// to check the bounds and calculate the offset
+static dt_status dt_array_bounds_check(const dt_array *a, long long index, size_t *offset)
+{
+    // check for NULL pointers
+    if (a == NULL || offset == NULL) {
+        return DT_ERR_RANGE; // invalid array or output pointer
+    }
+
+    // reject an index below the lower bound 
+    if (index < a->lower_bound) {
+        return DT_ERR_RANGE; // index is below the lower bound
+    }
+
+    // calculate the distance as a nonnegative
+    uintmax_t distance = (uintmax_t)index - (uintmax_t)a->lower_bound;
+    
+    // check if the distance is within the valid range
+    if(distance >= a->length) {
+        return DT_ERR_RANGE; // index is above the upper bound
+    }
+
+    // convert the distance to size_t for array access
+    *offset = (size_t)distance;
+
+    return DT_OK;
+}
+
+
 /*
  * dt_array_new builds an array of length nil elements.
  * The first index is lower_bound. A zero length creates a valid empty array.
@@ -43,9 +72,70 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
        dt_array_new(0, 0)   -> an empty array
        cases/normal/array_basics.case, cases/boundary/array_empty.case,
        cases/boundary/array_negative_lower_bound.case */
-    (void)length;
-    (void)lower_bound;
-    return NULL;
+
+    if (length > 0) {
+        
+        /*  example: idx: -1, 0, 1    offset: 0, 1, 2
+            final index = lower_bound + last_offset
+            make sure last_offset can be represented as long long  */
+        size_t last_offset = length - 1;
+
+        // check if last_offset can represent a long long
+        if (last_offset > (size_t)LLONG_MAX) {
+            return NULL; // final index is unrepresentable
+        }
+
+        // check if lower_bound + last_offset > LLONG_MAX
+        // => lower_bound > LLONG_MAX - last_offset
+        if (lower_bound > LLONG_MAX - (long long)(last_offset)) {
+            return NULL; // final index is unrepresentable
+        }
+    }
+
+    /*  total_bytes = length * sizeof(dt_value)
+        SIZE_MAX is the largest value that size_t can represent.
+        To prevent multiplication overflow: 
+            total_bytes <= SIZE_MAX
+            length * sizeof(dt_value) <= SIZE_MAX
+            Hence, length <= SIZE_MAX / sizeof(dt_value) */
+
+    if (length > SIZE_MAX / sizeof(dt_value)) {
+        return NULL;
+    }
+
+    // allocate the array descriptor
+    dt_array *a = malloc(sizeof(*a));
+
+    // if allocation fails, return NULL
+    if (a == NULL) {
+        return NULL;
+    }
+
+    // allocate and initialize the elements if the array is non-empty
+    if (length > 0) {
+        // allocate the elements
+        a->elements = malloc(length * sizeof(dt_value));
+
+        // if allocation fails, free the descriptor and return NULL
+        if (a->elements == NULL) {
+            free(a);
+            return NULL;
+        }
+
+        // initialize each element to dt_value_nil()
+        for (size_t i = 0; i < length; i++) {
+            a->elements[i] = dt_value_nil();
+        }
+    }  else {
+        // for an empty array, set elements to NULL
+        a->elements = NULL;
+    }
+
+    // store the length and lower bound
+    a->length = length;
+    a->lower_bound = lower_bound;
+
+    return a;
 }
 
 /*
@@ -58,7 +148,13 @@ void dt_array_free(dt_array *a)
        Preserve the referenced values. The driver environment owns them.
        an array holding a string  -> the element block goes, the string stays
        dt_array_free(NULL)        -> returns, having done nothing */
-    (void)a;
+
+    if (a != NULL) {
+        // free the elements block
+        free(a->elements);
+        // free the array descriptor
+        free(a);
+    }
 }
 
 /*
@@ -71,7 +167,13 @@ size_t dt_array_len(const dt_array *a)
        after `arr new a 3 -1`:  dt_array_len(a) -> 3, the same three elements
        after `arr new a 0 0`:   dt_array_len(a) -> 0
        cases/normal/array_basics.case, cases/boundary/array_empty.case */
-    (void)a;
+
+    // handles NULL by returning 0
+    if (a != NULL) {
+        // return the stored length
+        return a->length;
+    }
+    
     return 0;
 }
 
@@ -87,7 +189,13 @@ long long dt_array_lower_bound(const dt_array *a)
        after `arr new a 3 1`:   dt_array_lower_bound(a) -> 1
        cases/boundary/array_negative_lower_bound.case,
        cases/boundary/array_lower_bound_one.case */
-    (void)a;
+
+    // handles NULL by returning 0
+    if (a != NULL) {
+        // return the stored lower bound
+        return a->lower_bound;
+    }
+
     return 0;
 }
 
@@ -109,10 +217,23 @@ dt_status dt_array_get(const dt_array *a, long long index, dt_value *out)
        cases/boundary/array_index_above_upper.case,
        cases/boundary/array_index_below_lower.case,
        cases/boundary/array_full_range_index.case */
-    (void)a;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+
+    // get the offset for the given index
+    size_t offset;
+
+    // check the bounds and get the offset
+    // pointer to the offset variable to store the offset value
+    dt_status status = dt_array_bounds_check(a, index, &offset);
+
+    // if the bounds check fails, return the error status
+    if (status != DT_OK) {
+        return status;
+    }
+
+    // write the element at the offset to *out
+    *out = a->elements[offset];
+
+    return DT_OK;
 }
 
 /*
@@ -128,8 +249,21 @@ dt_status dt_array_set(dt_array *a, long long index, dt_value v)
          dt_array_set(a, -1, dt_value_int(10))  -> DT_OK, offset 0 holds 10
          dt_array_set(a,  2, dt_value_int(10))  -> DT_ERR_RANGE, nothing changes
        cases/normal/array_basics.case, cases/boundary/array_negative_lower_bound.case */
-    (void)a;
-    (void)index;
-    (void)v;
-    return DT_ERR_RANGE;
+    
+    // get the offset for the given index
+    size_t offset;
+
+    // check the bounds and get the offset
+    dt_status status = dt_array_bounds_check(a, index, &offset);
+
+    // if the bounds check fails, return the error status
+    if (status != DT_OK) {
+        return status;
+    }
+
+    // set the element at the offset to v
+    // inverse of what the getter does
+    a->elements[offset] = v; 
+
+    return DT_OK;
 }
