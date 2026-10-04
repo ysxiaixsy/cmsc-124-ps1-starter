@@ -209,11 +209,29 @@ dt_status dt_str_substr(const dt_str *s, size_t start, size_t length, dt_str **o
          dt_str_substr(s, 3, 5, &out)  -> DT_ERR_RANGE, *out untouched
        an allocation failure           -> DT_ERR_CAPACITY, *out untouched
        cases/boundary/substr_exact_end.case, cases/boundary/substr_past_end.case */
-    (void)s;
-    (void)start;
-    (void)length;
-    (void)out;
-    return DT_ERR_RANGE;
+
+    // check if start > s-> length
+    if (start > s->length) {
+        return DT_ERR_RANGE;
+    }
+
+    size_t remaining_length = s->length - start; 
+
+    // check if the requested length exceeds the remaining length
+    if (length > remaining_length) {
+        return DT_ERR_RANGE;
+    }
+
+    // since the requested range is valid, create a new dt_str for the substring
+    dt_str *substring = dt_str_new(s->bytes + start, length);
+
+    if (substring == NULL) {
+        return DT_ERR_CAPACITY; // allocation failed
+    }
+
+    // set the output pointer to the new substring
+    *out = substring;
+    return DT_OK;
 }
 
 /*
@@ -228,7 +246,5 @@ bool dt_str_eq(const dt_str *a, const dt_str *b)
        "hello" and "world"  -> false
        "a\0b" and "a"       -> false because their lengths are 3 and 1
        cases/normal/string_building.case, cases/capacity/embedded_zero_byte.case */
-    (void)a;
-    (void)b;
-    return false;
+
 }
