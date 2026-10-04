@@ -47,34 +47,34 @@ dt_str *dt_str_new(const char *bytes, size_t length)
     size_t buffer_size = length + 1; // +1 for the \0 terminator
 
     // allocate the dt_str structure
-    dt_str *str = malloc(sizeof(*str));
+    dt_str *s = malloc(sizeof(*s));
     
     // if allocation fails, return NULL
-    if (str == NULL) {
+    if (s == NULL) {
         return NULL; 
     }
 
-    // allocate the byte buffer for str, including \0
-    str->bytes = malloc(buffer_size);
+    // allocate the byte buffer for s, including \0
+    s->bytes = malloc(buffer_size);
 
     // if allocation fails, 
-    if (str->bytes == NULL) {
+    if (s->bytes == NULL) {
         // free the previously allocated dt_str and return NULL
-        free(str);
+        free(s);
         return NULL;
     }
 
-    // copy length bytes from bytes into str->bytes
-    memcpy(str->bytes, bytes, length);
+    // copy length bytes from bytes into s->bytes
+    memcpy(s->bytes, bytes, length);
 
     // put the null terminator at the end of the copied bytes
-    str->bytes[length] = '\0';
+    s->bytes[length] = '\0';
 
     // set the length and capacity
-    str->length = length;
-    str->capacity = buffer_size;
+    s->length = length;
+    s->capacity = buffer_size;
 
-    return str;
+    return s;
 }
 
 /*
@@ -85,7 +85,10 @@ void dt_str_free(dt_str *s)
     /* TODO: Release the buffer. Then release the handle. Accept NULL.
        dt_str_free(s)     -> the buffer and the handle are both released
        dt_str_free(NULL)  -> returns, having done nothing */
-    (void)s;
+    if (s != NULL) {
+        free(s->bytes);
+        free(s);
+    }
 }
 
 /*
