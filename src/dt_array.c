@@ -118,7 +118,13 @@ void dt_array_free(dt_array *a)
        Preserve the referenced values. The driver environment owns them.
        an array holding a string  -> the element block goes, the string stays
        dt_array_free(NULL)        -> returns, having done nothing */
-    (void)a;
+       
+    if (a != NULL) {
+        // free the elements block
+        free(a->elements);
+        // free the array descriptor
+        free(a);
+    }
 }
 
 /*
