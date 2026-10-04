@@ -157,9 +157,19 @@ dt_status dt_record_get(const dt_record *r, const char *field, dt_value *out)
          dt_record_get(person, "age", &out)      -> DT_OK, *out is the integer 36
          dt_record_get(person, "salary", &out)   -> DT_ERR_FIELD, *out untouched
        cases/normal/record_basics.case, cases/boundary/record_unknown_field.case */
-    (void)r;
-    (void)field;
-    (void)out;
+
+    size_t i;
+
+    // search for the field name in the record's names array
+    for (i = 0; i < r->count; i++) {
+        // compare current field name with the passed field name
+        if (strcmp(r->names[i], field) == 0) {
+            // if found, point *out to the corresponding value 
+            *out = r->values[i];
+            return DT_OK;
+        }
+    }
+    // if not found, return DT_ERR_FIELD
     return DT_ERR_FIELD;
 }
 
