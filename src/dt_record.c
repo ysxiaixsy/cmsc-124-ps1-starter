@@ -111,7 +111,12 @@ size_t dt_record_field_count(const dt_record *r)
        The count does not change after construction.
        after `rec new person name age`:  dt_record_field_count(person) -> 2
        cases/normal/record_basics.case */
-    (void)r;
+    
+    // if r is not NULL, return the stored count
+    if (r != NULL) {
+        return r->count;
+    }
+    
     return 0;
 }
 
