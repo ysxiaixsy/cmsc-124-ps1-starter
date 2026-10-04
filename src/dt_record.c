@@ -36,9 +36,47 @@ dt_record *dt_record_new(const char **field_names, size_t field_count)
        nine fields                  -> NULL, and the driver reports DT_ERR_CAPACITY
        cases/normal/record_basics.case, cases/capacity/record_max_fields.case,
        cases/capacity/record_over_fields.case */
-    (void)field_names;
-    (void)field_count;
-    return NULL;
+
+    // check if field_count exceeds DT_RECORD_MAX_FIELDS
+    if (field_count > DT_RECORD_MAX_FIELDS) {
+        return NULL; // too many fields
+    }
+
+    // allocate memory for the record
+    dt_record *r = malloc(sizeof(*r));
+
+    // if allocation fails, return NULL
+    if (r == NULL) {
+        return NULL; // allocation failure
+    }
+
+    // copy each field name and initialize each value to dt_value_nil()
+    size_t i;
+
+    for (i = 0; i < field_count; i++) {
+        // allocate memory for the field name
+        r->names[i] = malloc(strlen(field_names[i]) + 1); // +1 for /0
+
+        // if allocation fails, free previously allocated names and the record
+        if (r->names[i] == NULL) {
+            for (size_t j = 0; j < i; j++) {
+                free(r->names[j]);
+            }
+            free(r);
+            return NULL; // allocation failure
+        }
+
+        // otherwise, copy the field name
+        strcpy(r->names[i], field_names[i]);
+
+        // initialize the value to dt_value_nil()
+        r->values[i] = dt_value_nil();
+    }
+
+    // store the field count
+    r->count = field_count;
+
+    return r;
 }
 
 /*
