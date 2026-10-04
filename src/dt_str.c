@@ -145,10 +145,51 @@ dt_status dt_str_append(dt_str *s, const char *bytes, size_t length)
        s holds "hello": dt_str_append(s, ", world", 7) -> DT_OK, len is now 12
        an allocation failure                           -> DT_ERR_CAPACITY, s unchanged
        cases/normal/string_building.case, cases/capacity/string_growth.case */
-    (void)s;
-    (void)bytes;
-    (void)length;
-    return DT_ERR_CAPACITY;
+
+    // check if adding length to s->length would exceed SIZE_MAX
+    if (length > SIZE_MAX - s->length) {
+        return DT_ERR_CAPACITY;
+    }
+
+    // calculate the new length after appending
+    size_t new_length = s->length + length;
+
+    // making sure that \0 fits
+    if (new_length + 1 > SIZE_MAX) {
+        return DT_ERR_CAPACITY;
+    }
+
+    size_t required_capacity = new_length + 1; // +1 for the null terminator
+
+    // check if we need to grow the buffer
+    if (required_capacity > s->capacity) {
+        // geometric growth: double the capacity until it fits
+        size_t new_capacity = s->capacity;
+        while (new_capacity < required_capacity) {
+            new_capacity *= 2;
+            // check for overflow
+            if (new_capacity < s->capacity) {
+                return DT_ERR_CAPACITY; // overflow occurred
+            }
+        }
+
+        // allocate new buffer
+        char *new_bytes = realloc(s->bytes, new_capacity);
+        if (new_bytes == NULL) {
+            return DT_ERR_CAPACITY; // allocation failed
+        }
+
+        s->bytes = new_bytes;
+        s->capacity = new_capacity;
+    }
+
+    // copy the appended bytes into the buffer
+    memcpy(s->bytes + s->length, bytes, length);
+
+    // update the length and null-terminate the string
+    s->length = new_length;
+    s->bytes[s->length] = '\0'; // null-terminate the string
+    return DT_OK;
 }
 
 /*
