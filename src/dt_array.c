@@ -160,7 +160,13 @@ long long dt_array_lower_bound(const dt_array *a)
        after `arr new a 3 1`:   dt_array_lower_bound(a) -> 1
        cases/boundary/array_negative_lower_bound.case,
        cases/boundary/array_lower_bound_one.case */
-    (void)a;
+
+    // handles NULL by returning 0
+    if (a != NULL) {
+        // return the stored lower bound
+        return a->lower_bound;
+    }
+
     return 0;
 }
 
@@ -182,10 +188,32 @@ dt_status dt_array_get(const dt_array *a, long long index, dt_value *out)
        cases/boundary/array_index_above_upper.case,
        cases/boundary/array_index_below_lower.case,
        cases/boundary/array_full_range_index.case */
-    (void)a;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+
+    // check for NULL pointers
+    if (a == NULL || out == NULL) {
+        return DT_ERR_RANGE; // invalid array or output pointer
+    }
+
+    // reject an index below the lower bound 
+    if (index < a->lower_bound) {
+        return DT_ERR_RANGE; // index is below the lower bound
+    }
+
+    // calculate the distance as a nonnegative
+    uintmax_t distance = (uintmax_t)index - (uintmax_t)a->lower_bound;
+    
+    // check if the distance is within the valid range
+    if(distance >= a->length) {
+        return DT_ERR_RANGE; // index is above the upper bound
+    }
+
+    // convert the distance to size_t for array access
+    size_t offset = (size_t)distance;
+
+    // write the element at the offset to *out
+    *out = a->elements[offset];
+
+    return DT_OK;
 }
 
 /*
