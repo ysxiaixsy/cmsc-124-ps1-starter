@@ -26,6 +26,35 @@ struct dt_array {
     long long lower_bound;
 };
 
+// helper function for both getters and setters
+// out for dt_array_get, offset for dt_array_set
+static dt_status dt_array_check_bounds(const dt_array *a, long long index, size_t *out_offset)
+{
+    // check for NULL pointers
+    if (a == NULL || out_offset == NULL) {
+        return DT_ERR_RANGE; // invalid array or output pointer
+    }
+
+    // reject an index below the lower bound 
+    if (index < a->lower_bound) {
+        return DT_ERR_RANGE; // index is below the lower bound
+    }
+
+    // calculate the distance as a nonnegative
+    uintmax_t distance = (uintmax_t)index - (uintmax_t)a->lower_bound;
+    
+    // check if the distance is within the valid range
+    if(distance >= a->length) {
+        return DT_ERR_RANGE; // index is above the upper bound
+    }
+
+    // convert the distance to size_t for array access
+    *out_offset = (size_t)distance;
+
+    return DT_OK;
+}
+
+
 /*
  * dt_array_new builds an array of length nil elements.
  * The first index is lower_bound. A zero length creates a valid empty array.
@@ -229,8 +258,10 @@ dt_status dt_array_set(dt_array *a, long long index, dt_value v)
          dt_array_set(a, -1, dt_value_int(10))  -> DT_OK, offset 0 holds 10
          dt_array_set(a,  2, dt_value_int(10))  -> DT_ERR_RANGE, nothing changes
        cases/normal/array_basics.case, cases/boundary/array_negative_lower_bound.case */
-    (void)a;
-    (void)index;
-    (void)v;
+    
+       
+    // (void)a;
+    // (void)index;
+    // (void)v;
     return DT_ERR_RANGE;
 }
