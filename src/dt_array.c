@@ -27,11 +27,11 @@ struct dt_array {
 };
 
 // helper function for both getters and setters
-// out for dt_array_get, offset for dt_array_set
-static dt_status dt_array_check_bounds(const dt_array *a, long long index, size_t *out_offset)
+// to check the bounds and calculate the offset
+static dt_status dt_array_bounds_check(const dt_array *a, long long index, size_t *offset)
 {
     // check for NULL pointers
-    if (a == NULL || out_offset == NULL) {
+    if (a == NULL || offset == NULL) {
         return DT_ERR_RANGE; // invalid array or output pointer
     }
 
@@ -49,7 +49,7 @@ static dt_status dt_array_check_bounds(const dt_array *a, long long index, size_
     }
 
     // convert the distance to size_t for array access
-    *out_offset = (size_t)distance;
+    *offset = (size_t)distance;
 
     return DT_OK;
 }
@@ -218,26 +218,17 @@ dt_status dt_array_get(const dt_array *a, long long index, dt_value *out)
        cases/boundary/array_index_below_lower.case,
        cases/boundary/array_full_range_index.case */
 
-    // check for NULL pointers
-    if (a == NULL || out == NULL) {
-        return DT_ERR_RANGE; // invalid array or output pointer
-    }
+    // get the offset for the given index
+    size_t offset;
 
-    // reject an index below the lower bound 
-    if (index < a->lower_bound) {
-        return DT_ERR_RANGE; // index is below the lower bound
-    }
+    // check the bounds and get the offset
+    // pointer to the offset variable to store the offset value
+    dt_status status = dt_array_bounds_check(a, index, &offset);
 
-    // calculate the distance as a nonnegative
-    uintmax_t distance = (uintmax_t)index - (uintmax_t)a->lower_bound;
-    
-    // check if the distance is within the valid range
-    if(distance >= a->length) {
-        return DT_ERR_RANGE; // index is above the upper bound
+    // if the bounds check fails, return the error status
+    if (status != DT_OK) {
+        return status;
     }
-
-    // convert the distance to size_t for array access
-    size_t offset = (size_t)distance;
 
     // write the element at the offset to *out
     *out = a->elements[offset];
