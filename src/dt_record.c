@@ -133,10 +133,17 @@ dt_status dt_record_field_name(const dt_record *r, size_t index, const char **ou
          dt_record_field_name(person, 0, &out)  -> DT_OK, *out = "name"
          dt_record_field_name(person, 2, &out)  -> DT_ERR_RANGE, *out untouched
        cases/normal/record_basics.case */
-    (void)r;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+    
+    // check index is out of bounds
+    // not required to check for NULL but it is good practice to do so
+    if (r == NULL || index >= r->count) {
+        return DT_ERR_RANGE; // invalid index
+    }
+
+    // write the field name at index to *out
+    *out = r->names[index];
+
+    return DT_OK;
 }
 
 /*
