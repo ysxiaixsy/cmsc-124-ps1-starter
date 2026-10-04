@@ -88,7 +88,18 @@ void dt_record_free(dt_record *r)
     /* TODO: Release the copied field names. Then release the record.
        a record holding a string value  -> the names go, the string stays
        dt_record_free(NULL)             -> returns, having done nothing */
-    (void)r;
+
+    // if r is NULL, do nothing
+    if (r == NULL) {
+        return;
+    }
+
+    // for each field name, free the allocated memory
+    for (size_t i = 0; i < r->count; i++) {
+        free(r->names[i]);
+    }
+    // free the record itself
+    free(r);
 }
 
 /*
