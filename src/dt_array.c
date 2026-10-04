@@ -46,9 +46,9 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
 
     if (length > 0) {
         
-        // example: idx: -1, 0, 1    offset: 0, 1, 2
-        // final index = lower_bound + last_offset
-        // make sure last_offset can be represented as long long
+        /*  example: idx: -1, 0, 1    offset: 0, 1, 2
+            final index = lower_bound + last_offset
+            make sure last_offset can be represented as long long  */
         size_t last_offset = length - 1;
 
         // check if last_offset can represent a long long
@@ -63,12 +63,13 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
         }
     }
 
-    // total_bytes = length * sizeof(dt_value)
-    // SIZE_MAX is the largest value that size_t can represent.
-    // To prevent multiplication overflow: 
-    //      total_bytes <= SIZE_MAX
-    //      length * sizeof(dt_value) <= SIZE_MAX
-    //      Hence, length <= SIZE_MAX / sizeof(dt_value)
+    /*  total_bytes = length * sizeof(dt_value)
+        SIZE_MAX is the largest value that size_t can represent.
+        To prevent multiplication overflow: 
+            total_bytes <= SIZE_MAX
+            length * sizeof(dt_value) <= SIZE_MAX
+            Hence, length <= SIZE_MAX / sizeof(dt_value) */
+
     if (length > SIZE_MAX / sizeof(dt_value)) {
         return NULL;
     }
@@ -118,7 +119,7 @@ void dt_array_free(dt_array *a)
        Preserve the referenced values. The driver environment owns them.
        an array holding a string  -> the element block goes, the string stays
        dt_array_free(NULL)        -> returns, having done nothing */
-       
+
     if (a != NULL) {
         // free the elements block
         free(a->elements);
@@ -137,7 +138,13 @@ size_t dt_array_len(const dt_array *a)
        after `arr new a 3 -1`:  dt_array_len(a) -> 3, the same three elements
        after `arr new a 0 0`:   dt_array_len(a) -> 0
        cases/normal/array_basics.case, cases/boundary/array_empty.case */
-    (void)a;
+
+    // handles NULL by returning 0
+    if (a != NULL) {
+        // return the stored length
+        return a->length;
+    }
+    
     return 0;
 }
 
