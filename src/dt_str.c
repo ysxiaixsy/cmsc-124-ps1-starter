@@ -247,4 +247,14 @@ bool dt_str_eq(const dt_str *a, const dt_str *b)
        "a\0b" and "a"       -> false because their lengths are 3 and 1
        cases/normal/string_building.case, cases/capacity/embedded_zero_byte.case */
 
+    // compare lengths 
+    if (a->length != b->length) {
+        return false;
+    }
+
+    // if equal, compare the bytes using memcmp
+    if (memcmp(a->bytes, b->bytes, a->length) == 0) {
+        return true;
+    }
+    return false;
 }
