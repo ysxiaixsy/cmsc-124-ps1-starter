@@ -26,16 +26,28 @@ struct dt_tuple {
  */
 dt_tuple *dt_tuple_new(const dt_value *values, size_t count)
 {
-    /* TODO: Return NULL when count exceeds DT_TUPLE_MAX_ARITY.
-       Otherwise, copy the values. Accept a zero count.
-       {1, "two"}  -> a tuple of arity 2 that prints as (1, "two")
-       count 0     -> a valid empty tuple that prints as ()
-       count 9     -> NULL, since DT_TUPLE_MAX_ARITY is 8
-       cases/normal/tuple_basics.case, cases/capacity/tuple_max_arity.case,
-       cases/capacity/tuple_over_arity.case */
-    (void)values;
-    (void)count;
-    return NULL;
+    // checks for excessive arity
+    if (count > DT_TUPLE_MAX_ARITY) {
+        return NULL;
+    }
+
+    // allocate memory for the dt_tuple
+    dt_tuple *t = malloc(sizeof(dt_tuple));
+
+    // if allocation fails, return NULL
+    if (t == NULL) {
+        return NULL;
+    }
+
+    // copy the values we got into the tuple 
+    for (size_t i = 0; i < count; i++) {
+        t->values[i] = values[i];
+    }
+
+    // store the arity in the tuple
+    t->arity = count;
+
+    return t;
 }
 
 /*
