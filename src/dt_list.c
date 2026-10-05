@@ -89,6 +89,7 @@ void dt_list_free(dt_list *l)
     }
 
     // free the memory allocated for the cell
+    // preserves what the freed cell's tail points to
     free(l);
 }
 
@@ -101,8 +102,17 @@ size_t dt_list_len(const dt_list *l)
        for a = (1 2 3):  dt_list_len(a) -> 3
        for the empty list: dt_list_len(NULL) -> 0
        cases/normal/list_basics.case */
-    (void)l;
-    return 0;
+
+    // initialize count to 0
+    size_t count = 0;
+
+    // traverse the list and count the cells
+    while (l != NULL) {
+        count++;
+        l = l->tail;
+    }
+
+    return count;
 }
 
 /*
