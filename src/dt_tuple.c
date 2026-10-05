@@ -26,6 +26,14 @@ struct dt_tuple {
  */
 dt_tuple *dt_tuple_new(const dt_value *values, size_t count)
 {
+    /* TODO: Return NULL when count exceeds DT_TUPLE_MAX_ARITY.
+       Otherwise, copy the values. Accept a zero count.
+       {1, "two"}  -> a tuple of arity 2 that prints as (1, "two")
+       count 0     -> a valid empty tuple that prints as ()
+       count 9     -> NULL, since DT_TUPLE_MAX_ARITY is 8
+       cases/normal/tuple_basics.case, cases/capacity/tuple_max_arity.case,
+       cases/capacity/tuple_over_arity.case */
+    
     // checks for excessive arity
     if (count > DT_TUPLE_MAX_ARITY) {
         return NULL;
@@ -60,7 +68,12 @@ void dt_tuple_free(dt_tuple *t)
        The environment owns those values. dt_array_free follows the same rule.
        a tuple holding a string  -> the tuple goes, the string stays
        dt_tuple_free(NULL)       -> returns, having done nothing */
-    (void)t;
+    
+    // check if t is NULL
+    if (t != NULL) {
+        // free the memory allocated for the tuple
+        free(t);
+    }
 }
 
 /*
