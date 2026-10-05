@@ -37,6 +37,8 @@ dt_list *dt_list_nil(void)
        dt_list_nil()             -> the empty list, which prints as ()
        dt_list_len(dt_list_nil()) -> 0
        cases/normal/list_basics.case */
+
+    // return the empty list
     return NULL;
 }
 
@@ -54,9 +56,20 @@ dt_list *dt_list_cons(dt_value head, dt_list *tail)
        List b contains (2 3) and references the same cells for 2 and 3.
        an allocation failure -> NULL
        cases/normal/list_basics.case, cases/cleanup/shared_list_tail.case */
-    (void)head;
-    (void)tail;
-    return NULL;
+    
+    // allocate memory for a new cell
+    dt_list *cell = (dt_list *)malloc(sizeof(*cell));
+    
+    // check if allocation was failed
+    if (cell == NULL) {
+        return NULL;
+    }
+
+    // initialize the new cell
+    cell->head = head;
+    cell->tail = tail;
+
+    return cell;
 }
 
 /*
