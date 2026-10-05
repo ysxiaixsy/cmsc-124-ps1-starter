@@ -151,7 +151,14 @@ dt_status dt_list_cdr(const dt_list *l, dt_list **out)
        for a = (1 2 3):     dt_list_cdr(a, &out)    -> DT_OK, *out references tail b
        for the empty list:  dt_list_cdr(NULL, &out) -> DT_ERR_EMPTY, *out untouched
        cases/normal/list_basics.case, cases/boundary/list_cdr_empty.case */
-    (void)l;
-    (void)out;
-    return DT_ERR_EMPTY;
+
+    // check if the list is empty
+    if (l == NULL) {
+        return DT_ERR_EMPTY;
+    }
+
+    // out* points to the tail of the list
+    *out = l->tail;
+
+    return DT_OK;
 }
