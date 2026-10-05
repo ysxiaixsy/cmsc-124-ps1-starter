@@ -82,7 +82,14 @@ void dt_list_free(dt_list *l)
        freeing a's first cell  -> b still reaches the cells holding 2 and 3
        releasing the tail here causes the sanitizer to report a double release
        cases/cleanup/shared_list_tail.case */
-    (void)l;
+    
+    // check if l is NULL
+    if (l == NULL) {
+        return;
+    }
+
+    // free the memory allocated for the cell
+    free(l);
 }
 
 /*
