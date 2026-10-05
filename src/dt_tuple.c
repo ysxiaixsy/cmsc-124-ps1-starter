@@ -106,8 +106,15 @@ dt_status dt_tuple_at(const dt_tuple *t, size_t index, dt_value *out)
          dt_tuple_at(t, 0, &out)  -> DT_OK, *out is the integer 1
          dt_tuple_at(t, 2, &out)  -> DT_ERR_RANGE, *out untouched
        cases/normal/tuple_basics.case, cases/boundary/tuple_index_past_arity.case */
-    (void)t;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+    
+    // check for valid index
+    // checking for null tuple is to avoid dereferencing a null pointer
+    if (t == NULL || index >= t->arity) {
+        return DT_ERR_RANGE;
+    }
+
+    // if index is valid, write the value to *out
+    *out = t->values[index];
+
+    return DT_OK;
 }
