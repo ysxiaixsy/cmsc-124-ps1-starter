@@ -59,7 +59,7 @@ Access after release occurs when an attempt is made to access memory after it ha
 
 A real use-after-free can threaten correctness and security, often unpredictably. An unreleased allocation primarily threatens capacity, since repeated leaks can increase memory use over time. How much each matters depends on the setting: in a long-running server both can be serious, while in a short-lived command-line tool a leak has less time to accumulate. A large leak can still raise peak memory use before the tool exits, and a use-after-free remains dangerous if execution reaches the faulty access.
 
-**`dt_ref` handles this cases.** In `dt_ref.c`, a reference is represented by:
+**`dt_ref` manages these cases.** In `dt_ref.c`, a reference is represented by:
 
 ```c
 struct dt_ref {
@@ -68,7 +68,7 @@ struct dt_ref {
 };
 ```
 
-The reference owns the heap-allocated `cell`, and the `released` flag records whether that cell has been freed. The struct `dt_ref` is a separate allocation from the cell; the pointer `p` refers to that handle. `dt_ref_new` allocates both the struct and the cell. `dt_ref_release` frees the cell, while `dt_ref_destroy` eventually frees the handle.
+The reference owns the heap-allocated `cell`, and the `released` flag records whether that cell has been freed. The `struct dt_ref` object is allocated separately from the cell, and `p` is a pointer to that object. `dt_ref_new` allocates both the `struct dt_ref` object and the cell. `dt_ref_release` frees the cell, while `dt_ref_destroy` eventually frees the `struct dt_ref` object.
 
 When `dt_ref_release` is called on a live reference, it does this:
 
@@ -87,9 +87,9 @@ if (p->released) {
 *out = *p->cell;
 ```
 
-Because the flag is checked first, the dereference is never reached after release. This implementation rejects the borrow instead of reading freed memory. `dt_ref_release` has a similar guard against a second release, preventing a double free of the cell. Setting `p->cell` to `NULL` clears the freed cell's address, while checking `p->released` prevents `dt_ref_borrow` from reading that cell. These protections apply when the reference operations are used with a live handle; they do not make arbitrary stale-pointer use safe.
+Because the flag is checked first, the dereference is never reached after release. This implementation rejects the borrow instead of reading freed memory. `dt_ref_release` has a similar guard against a second release, preventing a double free of the cell. Setting `p->cell` to `NULL` clears the freed cell's address, while checking `p->released` prevents `dt_ref_borrow` from reading that cell. These protections apply when the reference operations are used with a live `struct dt_ref` object; they do not make arbitrary stale-pointer use safe.
 
-An unreleased reference is handled differently. The driver checks for unreleased references in its bindings after command execution finishes successfully. It reports `DT_ERR_LEAK` if any are found. This is not a general audit of every allocation, and the driver skips the check if a command has already failed. Cleanup still runs: `dt_ref_destroy` releases any cell still held by a reference, then frees the handle. Thus, `DT_ERR_LEAK` means the reference was still unreleased at the check; it does not mean the memory remains allocated after the driver finishes cleanup.
+An unreleased reference is handled differently. The driver checks for unreleased references in its bindings after command execution finishes successfully. It reports `DT_ERR_LEAK` if any are found. This is not a general audit of every allocation, and the driver skips the check if a command has already failed. Cleanup still runs: `dt_ref_destroy` releases any cell still held by a reference, then frees the `struct dt_ref` object. Thus, `DT_ERR_LEAK` means the reference was still unreleased at the check; it does not mean the memory remains allocated after the driver finishes cleanup.
 
 **Damage in a long-running server:**
 
