@@ -55,4 +55,62 @@ Our `dt_map` keeps an `order` array, with one pointer per key, beside the 64 buc
 
 ## 4. Access after release vs. an unreleased allocation
 
-<!-- Lau, also this-->
+Access after release occurs when an attempt is made to access memory after it has been freed. An unreleased allocation is an omission: no single operation necessarily causes an error, but the allocation is still owned when the program checks its final state.
+
+A real use-after-free can threaten correctness and security, often unpredictably. An unreleased allocation primarily threatens capacity, since repeated leaks can increase memory use over time. How much each matters depends on the setting: in a long-running server both can be serious, while in a short-lived command-line tool a leak has less time to accumulate. A large leak can still raise peak memory use before the tool exits, and a use-after-free remains dangerous if execution reaches the faulty access.
+
+**`dt_ref` handles this cases.** In `dt_ref.c`, a reference is represented by:
+
+```c
+struct dt_ref {
+    dt_value *cell;
+    bool      released;
+};
+```
+
+The reference owns the heap-allocated `cell`, and the `released` flag records whether that cell has been freed. The struct `dt_ref` is a separate allocation from the cell; the pointer `p` refers to that handle. `dt_ref_new` allocates both the struct and the cell. `dt_ref_release` frees the cell, while `dt_ref_destroy` eventually frees the handle.
+
+When `dt_ref_release` is called on a live reference, it does this:
+
+```c
+free(p->cell);
+p->cell = NULL;
+p->released = true;
+```
+
+A later `dt_ref_borrow` checks the flag before reading the cell:
+
+```c
+if (p->released) {
+    return DT_ERR_RELEASED;
+}
+*out = *p->cell;
+```
+
+Because the flag is checked first, the dereference is never reached after release. This implementation rejects the borrow instead of reading freed memory. `dt_ref_release` has a similar guard against a second release, preventing a double free of the cell. Setting `p->cell` to `NULL` clears the freed cell's address, while checking `p->released` prevents `dt_ref_borrow` from reading that cell. These protections apply when the reference operations are used with a live handle; they do not make arbitrary stale-pointer use safe.
+
+An unreleased reference is handled differently. The driver checks for unreleased references in its bindings after command execution finishes successfully. It reports `DT_ERR_LEAK` if any are found. This is not a general audit of every allocation, and the driver skips the check if a command has already failed. Cleanup still runs: `dt_ref_destroy` releases any cell still held by a reference, then frees the handle. Thus, `DT_ERR_LEAK` means the reference was still unreleased at the check; it does not mean the memory remains allocated after the driver finishes cleanup.
+
+**Damage in a long-running server:**
+
+In unguarded code, access after release is a threat to correctness and security. After a block is freed, the allocator may reuse it for a later allocation. A stale read may then observe data written by the new owner, which in a server could belong to another user. A stale write may corrupt an unrelated object, and a double free can damage the allocator's bookkeeping. These outcomes are unpredictable, and symptoms can appear long after the faulty operation. Allocation activity in a busy server can increase the chance that freed memory is reused before a stale access. Restarting may clear immediate effects, but it does not fix the underlying bug.
+
+An unreleased allocation does not itself invalidate a live object. Its primary risk is growing resource use: repeated leaks accumulate for as long as the allocations remain unreleased, raising memory consumption and potentially slowing the application or causing allocation failures. The impact depends on how often the leak occurs, how much memory each allocation uses, and how long the server runs. If a client can trigger the leaking path, the leak may become a denial-of-service risk. Restarting frees accumulated memory, but it does not fix the leak, so the problem can return.
+
+Neither failure is always worse. A persistent leak can take a service down, while a use-after-free in rarely executed code may never occur. The difference is in the kind of risk: a leak threatens capacity and may appear as steadily rising memory use; a use-after-free threatens correctness and can cause unpredictable failures with little warning. Either can cause an outage.
+
+**Damage in a Command-Line Tool that Exits in a Second**
+
+When a process exits, the operating system reclaims its memory, so a small leak does not outlive that run. But exit limits how long a leak lasts, not how large it grows. A tool that leaks on every item of a very large input can still run out of memory before it exits. If the same code is reused in a long-running program, the leak can accumulate for much longer.
+
+A short run does not make a use-after-free safe. What matters is whether execution reaches the faulty path. If it does, a stale read may produce incorrect output or data that is later written to a result file. A stale write may corrupt data directly, and either can contribute to a crash. If the tool handles untrusted input, an attacker may be able to steer execution toward that path.
+
+**Limits of the protection:**
+
+The checks protect only operations that go through them: `dt_ref_borrow` rejects borrowing after release, and `dt_ref_release` rejects a second release. Code that bypasses these functions, or uses a handle after `dt_ref_destroy` has freed it, is not protected.
+
+The handle deliberately outlives the release. `dt_ref_release` frees `cell` but keeps `p`, so the `released` flag remains available. The handle stays allocated until `dt_ref_destroy` runs; in a long-running application, handles can accumulate if references are released but never destroyed. Destroying a handle is safe only once no other code can use it.
+
+Aliasing is also outside the reference's ownership model. The comment in `dt_ref_new` says "Ownership stops at the cell": the reference owns its cell, not the objects a stored value may point to. A referenced string, for example, remains owned by the environment, so `dt_ref` cannot detect if that string is freed elsewhere. Also, `dt_ref_borrow(NULL)` returns `DT_ERR_RELEASED`, so a missing reference and a released reference produce the same status.
+
+This mechanism models a limited set of ownership errors; it is not a general memory-safety guarantee. AddressSanitizer can detect certain memory errors during instrumented runs. Ownership-enforcing designs and disciplined lifetime management can prevent some errors.
