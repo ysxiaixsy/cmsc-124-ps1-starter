@@ -10,7 +10,7 @@ toolchains, and local verification details for the work that the manual defines.
 Replace the two entries below. An assigned trio adds one entry.
 
 - Joseph Patrick A. Salomeo (`@ysxiaixsy`)
-- Justin B. Lauricio (`@llaollao902 `)
+- Justin B. Lauricio (`@llaollao902`)
 
 ## Files You May Change
 
