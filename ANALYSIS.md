@@ -111,8 +111,8 @@ A short run does not make a use-after-free safe. What matters is whether executi
 
 **Limits of the protection:**
 
-The checks protect only operations that go through them: `dt_ref_borrow` rejects borrowing after release, and `dt_ref_release` rejects a second release. Code that bypasses these functions, or uses a handle after `dt_ref_destroy` has freed it, is not protected.
+The checks protect only operations that go through them: `dt_ref_borrow` rejects borrowing after release, and `dt_ref_release` rejects a second release. Code that bypasses these functions, or uses a `dt_ref *` after `dt_ref_destroy` has freed the `struct dt_ref` object it points to, is not protected.
 
-The handle deliberately outlives the release. `dt_ref_release` frees `cell` but keeps `p`, so the `released` flag remains available. The handle stays allocated until `dt_ref_destroy` runs; in a long-running application, handles can accumulate if references are released but never destroyed. Destroying a handle is safe only once no other code can use it.
+The `struct dt_ref` object deliberately outlives the cell's release. `dt_ref_release` frees `cell` but keeps the `struct dt_ref` object allocated, so its `released` flag remains available. The object stays allocated until `dt_ref_destroy` runs; in a long-running application, these objects can accumulate if references are released but never destroyed. Destroying the object is safe only once no other code can use its pointer.
 
 Aliasing is also outside the reference's ownership model. The comment in `dt_ref_new` says "Ownership stops at the cell": the reference owns its cell, not the objects a stored value may point to. A referenced string, for example, remains owned by the environment, so `dt_ref` cannot detect if that string is freed elsewhere. Also, `dt_ref_borrow(NULL)` returns `DT_ERR_RELEASED`, so a missing reference and a released reference produce the same status. This mechanism models a limited set of ownership errors. Hence, it is not a general memory-safety guarantee. 
