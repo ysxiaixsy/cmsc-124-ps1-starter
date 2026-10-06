@@ -2,9 +2,13 @@
 
 ## 1. Three categories and what their languages pay
 
-### 1a. [type, eg. Arrays]: [language] `[dt]`
+### 1a. Arrays: Python `list`
 
-<!-- Lau, jus remove this if ma paste kna -->
+Our `dt_array` stores its `dt_value` elements contiguously and has a fixed length after construction. Indexing checks the declared bounds and converts the index to an offset by subtracting the lower bound, so an array can use indices such as `-1..1` or `1..3`. Once the offset is known, reading or writing an element is constant time. The `dt_array` interface has no resize operation, so changing the number of elements requires creating a new array and copying the elements to keep.
+
+A Python `list` is a resizable array of references to Python objects. It can grow with `append`, usually in amortized constant time, by reserving extra slots; this spare capacity and the object references cost memory. For integer elements, each list slot stores a reference to a Python `int` object. Distinct integer objects add per-object memory overhead, and accessing an element involves following its reference. Our array stores each `dt_value` inline in its element block, so it avoids a separate Python object for each integer, though each `dt_value` includes space for its tag and largest union alternative. The exact memory comparison depends on the element types, Python version, and platform.
+
+Both provide constant-time indexed access in the usual case, but Python list access also incurs interpreter and reference-handling overhead. You would notice Python's flexibility when the collection size changes often, while its per-object memory cost is more noticeable in large lists of small values. You would notice our fixed size when you need to append or remove elements, and our lower-bound support when the indices are meaningful and do not start at zero.
 
 ### 1b. Integers: Python `int`
 
@@ -111,6 +115,4 @@ The checks protect only operations that go through them: `dt_ref_borrow` rejects
 
 The handle deliberately outlives the release. `dt_ref_release` frees `cell` but keeps `p`, so the `released` flag remains available. The handle stays allocated until `dt_ref_destroy` runs; in a long-running application, handles can accumulate if references are released but never destroyed. Destroying a handle is safe only once no other code can use it.
 
-Aliasing is also outside the reference's ownership model. The comment in `dt_ref_new` says "Ownership stops at the cell": the reference owns its cell, not the objects a stored value may point to. A referenced string, for example, remains owned by the environment, so `dt_ref` cannot detect if that string is freed elsewhere. Also, `dt_ref_borrow(NULL)` returns `DT_ERR_RELEASED`, so a missing reference and a released reference produce the same status.
-
-This mechanism models a limited set of ownership errors; it is not a general memory-safety guarantee. AddressSanitizer can detect certain memory errors during instrumented runs. Ownership-enforcing designs and disciplined lifetime management can prevent some errors.
+Aliasing is also outside the reference's ownership model. The comment in `dt_ref_new` says "Ownership stops at the cell": the reference owns its cell, not the objects a stored value may point to. A referenced string, for example, remains owned by the environment, so `dt_ref` cannot detect if that string is freed elsewhere. Also, `dt_ref_borrow(NULL)` returns `DT_ERR_RELEASED`, so a missing reference and a released reference produce the same status. This mechanism models a limited set of ownership errors. Hence, it is not a general memory-safety guarantee. 
